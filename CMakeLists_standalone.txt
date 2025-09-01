@@ -1,0 +1,75 @@
+# Cmake config for NanoShaper
+project(NanoShaper) 
+cmake_minimum_required(VERSION 3.1)
+cmake_policy(VERSION 2.8.4)
+
+if (NOT TBB_DISABLED)
+	find_package(TBB REQUIRED)
+endif()
+
+include_directories (BEFORE include)
+include_directories(src)
+include_directories(src/ConfigFile)
+include_directories(src/jama)
+include_directories(src/tnt)
+include_directories(src/sturm)
+include_directories(src/octree)
+
+# if cgal is found, boost is automatically found
+find_package(CGAL)
+  
+file(GLOB SRC
+	"./src/*.h"
+	"./src/*.cpp")
+	
+if (CGAL_FOUND)
+
+	include( ${CGAL_USE_FILE} )		
+	add_definitions(-DENABLE_CGAL)
+
+	if(NOT BOOST_DISABLED)
+		add_definitions(-DENABLE_BOOST_THREADS)
+		message(STATUS "NanoShaper BOOST enabled")
+	else()
+		message(STATUS "NanoShaper BOOST not enabled (only used in cgal)")
+	endif()
+	
+	find_package( Boost COMPONENTS thread system filesystem REQUIRED ) #whatever libs you need
+	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+		
+	add_executable(NanoShaper
+								./src/sturm/sturm.cpp
+								./src/sturm/util.cpp
+								./src/sturm/solve.h
+								${SRC}
+								./src/ply/ply.cpp
+								./src/ply/ply.h								
+	
+								./src/ConfigFile/ConfigFile.cpp
+								./src/ConfigFile/ConfigFile.h 
+								./src/octree/octree.h 
+								)
+
+	if(NOT BOOST_DISABLED)
+		TARGET_LINK_LIBRARIES(NanoShaper PUBLIC ${Boost_LIBRARIES})
+	endif(NOT BOOST_DISABLED)
+
+	if (NOT TBB_DISABLED)
+		include(CGAL_TBB_support)
+		if(TARGET CGAL::TBB_support)
+			target_link_libraries(NanoShaper PUBLIC CGAL::TBB_support)
+			message(STATUS "TBB found")
+		else()
+			message(STATUS "TBB not found")
+		endif()
+	else()
+		message(STATUS "TBB not enabled")
+	endif()
+			
+else(CGAL_FOUND)
+		
+	message(STATUS "CGAL not found, compilation stopped")  
+	
+endif(CGAL_FOUND)
+
+
